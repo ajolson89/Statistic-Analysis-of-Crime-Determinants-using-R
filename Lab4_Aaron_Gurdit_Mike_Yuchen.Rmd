@@ -56,12 +56,13 @@ for (i in 4:26)
 nrow(subset(crime,crime <.02))
 ```
 
-We first take note of our dependent variable of crime and see a positive skew. We note that all the values are already between 0 and .1 (non-inclusive). Tax also has a strong positive skew and is strictly positive here (elasticity here also makes sense). Ymale and mix also seem to fall in that potential category. The wage variables seem natural to apply log transformations although they don't seem far from normal so we might want to compare/analyze further. We might also want to look at the group/joint effect of wage as well. Other variables to consider might be ratio of min wage to max.
+We first take note of our dependent variable of crime and see a positive skew. We note that all the values are already between 0 and .1 (non-inclusive). Since we don't have any 0's, a log transformation seems reasonable here thought for interpretation's sake we note that we're already dealing in percentages so have to be careful when discussing elasticity. Tax also has a strong positive skew and is strictly positive here (elasticity here also makes sense). Ymale and mix also seem to fall in that potential category. The wage variables seem natural to apply log transformations although they don't seem far from normal so we might want to compare/analyze further. We might also want to look at the group/joint effect of wage as well. Other variables to consider might be ratio of min wage to max.
 
 ```{r}
 library(corrplot)
+crime$log_crime <- log(crime$crime)
 cor(crime) #quite a few variables, might wanna consider correlation heatmap here
-corrplot(cor(crime[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
+corrplot(cor(crime[c(4:27)]), method = 'square', type = 'upper', tl.col = 'black')
 
 ```
 Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Induitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other:
