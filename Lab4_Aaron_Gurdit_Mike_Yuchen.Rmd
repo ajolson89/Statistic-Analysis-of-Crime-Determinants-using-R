@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 ### Introduction
-
+TEST TEST TEST
 There is a political campaign that is set out to understand source factors of crime in order to develop policy suggestions that can possibly be applied to local government. In order to make data-informed decisions, our group has been hired to provide research for the political campaign and has been given a dataset of crime statistics for a set of counties along with a codebook explaining the variables. Using EDA, hypothesis testing, and our knowledge of linear regression, we look to examine and possibly use available factors such as wage and police per capita (independent variables) to help understand their impact on crimes per person (dependent variable) as well as trying to help address the campaign's questions from a causal lens. We will also explain limitations and assumptions behind our choices of analysis and modeling and our results.
   
 ```{r}
