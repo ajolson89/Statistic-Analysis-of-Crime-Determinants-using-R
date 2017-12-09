@@ -1,0 +1,133 @@
+---
+title: "Lab 4"
+subtitle: "w203: Statistics for Data Science"
+author: "Gurdit Chahal"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Introduction
+
+There is a political campaign that is set out to understand source factors of crime in order to develop policy suggestions that can possibly be applied to local government. In order to make data-informed decisions, our group has been hired to provide research for the political campaign and has been given a dataset of crime statistics for a set of counties along with a codebook explaining the variables. Using EDA, hypothesis testing, and our knowledge of linear regression, we look to examine and possibly use available factors such as wage and police per capita (independent variables) to help understand their impact on crimes per person (dependent variable) as well as trying to help address the campaign's questions from a causal lens. We will also explain limitations and assumptions behind our choices of analysis and modeling and our results.
+  
+```{r}
+library(car)
+setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
+crime <- read.csv(file='crime_v2_updated.csv',header=TRUE,sep=',')
+
+```
+
+  Here we examine the variables. 
+  
+  
+```{r}
+head(crime)
+summary(crime)
+str(crime)
+nrow(crime)
+apply(!is.na(crime), MARGIN = 2, mean)
+```
+Don't see any immediate na's. Hence we have to be more careful in finding anomolies/missing values in the way that they are coded.
+We note county doesnt mean anything in terms of descriptive statistics... We might use this id to see if there's random sampling or not. These counties might all be clustered in some fashion (as local government naturally would...). Year is 88 accross the data (1988) so it is truly cross sectional/true for that time period. 
+
+We note west, central and urban as indicator values. West and central have an implicit base value of [0,0] to indicate the eastern part of the state. Note ymales is a proprotion and is for a certain age group, can't explicitly look for a comment on females but rather have to generalize of population outside this particular group.
+
+Anomalies/errors: probsen and probconv are well above 1 in terms of max which violates them being "true" probabilities. Might make more sense to consider these as ordinal. If there are relatively few such points, might be able to discard as anomalies.
+
+```{r}
+nrow(subset(crime,(probsen > 1) | (probconv > 1)))
+
+inspect_prob <- subset(crime,(probsen > 1) | (probconv > 1))
+
+
+```
+We se that 10 of our observations actually break the definition of probability. This is significant as that is 11% of our observations. Only one of these is violates from probsen and it happens to coincide with probconv. There don't seem to be any inconsistensies in the other columns or trends . We could consider breaking our data into quantiles and treating it as subjective/ordinal data. This will likely be the case for all three of the probabilities since they seem subjective. As a simple first transform, .5 could be coded as unsure with less being sure of the even not happening and above as being more confident that the event is happening. What would be interesting to explore is the relationship of probability of sentence and sentence length along with probability of conviction and arrest. Would also wanna check the group/joint significance of these. 
+
+
+
+```{r}
+for (i in 4:26)
+  {
+ hist(crime[,i],main=" ",xlab=NULL, breaks=20)
+  title(names(crime)[i], line = -1)
+}
+nrow(subset(crime,crime <.02))
+```
+
+We first take note of our dependent variable of crime and see a positive skew. We note that all the values are already between 0 and .1 (non-inclusive). Tax also has a strong positive skew and is strictly positive here (elasticity here also makes sense). Ymale and mix also seem to fall in that potential category. The wage variables seem natural to apply log transformations although they don't seem far from normal so we might want to compare/analyze further. We might also want to look at the group/joint effect of wage as well. Other variables to consider might be ratio of min wage to max.
+
+```{r}
+library(corrplot)
+cor(crime) #quite a few variables, might wanna consider correlation heatmap here
+corrplot(cor(crime[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
+
+```
+Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Induitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other:
+
+```{r}
+cor(crime$urban, crime$density)
+```
+
+Oddly the probability of arrenst or prison is negatively correlated with crime. There is no information related to how these statistics were computed so it is difficult to understand why they would be negatively correlated, when intuitively a higher probability of arrest/prison should correlate with crime. 
+
+```{r}
+cor(crime$probarr, crime$probsen)
+```
+
+In order to determine important relationships between the crime variable and other explanatory variables, scatterplots can be analyzed. 
+```{r}
+for (i in 5:26)
+  {
+ plot(crime[,i], crime$crime,main=" ",xlab=names(crime)[i])
+  title(names(crime)[i], line = -1)
+}
+```
+
+##Proposed Model
+
+Current thoughts: use "prob" vars, mix, ymale, tax, and density as explanatory...
+
+##CLM Assumptions
+
+a. Linear Population Model
+Nothing to reallt check here as we have specified the model in that way.
+
+b. Random Sampling
+*Not sure* Current thoughts: neighboring counties can affect one another. There can be particular pockets of crime. We don't know how accurate the records are per county (especially in non-urban areas) and we are being given averages in some case. The probabability variables call into question if there was a selection on non-zero areas only (or what methods were even used to determine these probabilities; sample porportions, bayes, etc). Would likely say this fails...
+
+c. No Perfect Collinearity 
+
+Verified from correlation matrix. Would need to double check once we transform and create new variables. Should also check VIF.
+
+d. Zero-conditional mean
+
+Check residuals vs fitted
+Check covariances with residuals
+Check leverage
+At the least, argue for exogeneity.
+
+If any reason to believe invalid, can argue for OLS asymptotics for consistency due to sample size.
+
+e. Homoskedasticity
+Check residuals vs fitted to see wether variance constant
+Can also try Breusch-Pagan /Score-test
+
+If any doubt, calculate robust standard errors.
+
+f. Normality of Errors
+Use Q-Q and histogram plots
+
+##Model 2, add location and interactions?
+mention assumptions that differ
+
+##Model 3
+
+mention assumptions that differ
+
+##Causality
+
+
+##Conclusion
+
