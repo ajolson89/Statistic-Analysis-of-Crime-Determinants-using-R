@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 There is a political campaign that is set out to understand source factors of crime in order to develop policy suggestions that can possibly be applied to local government. In order to make data-informed decisions, our group has been hired to provide research for the political campaign and has been given a dataset of crime statistics for a set of counties along with a codebook explaining the variables. 
 
-(YZ)
+
 This data is collected from a panel of 90 observational units (counties) from a single state in the U.S.
 
 Using EDA, hypothesis testing, and our knowledge of linear regression, we look to examine and possibly use available factors such as wage and police per capita (independent variables) to help understand their impact on crimes per person (dependent variable) as well as trying to help address the campaign's questions from a causal lens. We will also explain limitations and assumptions behind our choices of analysis and modeling and our results.
@@ -20,7 +20,7 @@ Using EDA, hypothesis testing, and our knowledge of linear regression, we look t
 ```{r}
 library(car)
 # setwd("~/Berkeley/W203 Statistics/Assignments/Lab_4") # MP Path #
-# setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
+setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
 crime <- read.csv(file='crime_v2_updated.csv',header=TRUE,sep=',')
 
 ```
@@ -40,16 +40,18 @@ We note county doesnt mean anything in terms of descriptive statistics... We mig
 
 We note west, central and urban as indicator values. West and central have an implicit base value of [0,0] to indicate the eastern part of the state. Note ymales is a proprotion and is for a certain age group, can't explicitly look for a comment on females but rather have to generalize of population outside this particular group.
 
-(YZ)
 probarr (‘probability' of arrest) is proxied by the ratio of arrests to offenses. 
 probconv ('probability' of conviction) is proxied by the ratio of convictions to arrests.
 probsen (‘probability' of prison sentence) is proxied by the proportion of total convictions resulting in prison sentences.
 
-(YZ)
 Anomalies/errors:
-We notice that for county 115 probconv and probsen are well above 1 which may have been an clerical error in recording the data (i.e., not all arrests and convictions were properly recorded). We should discard this county if so. In addition, this county has an average sentence of 21, making it an outlier. This county is an anomaly with the lowest crime as well, so we can drop it.
-Counties 185, 195, 3, 127, 99, 19, 197, 137 and 149 also have probconv greater than 1, which means more convictions were captured than arrests. 
+
+We notice that for county 115 probconv and probsen are well above 1 which may have been an clerical error in recording the data (i.e., not all arrests and convictions were properly recorded). Additionally, this county is associated with a large increase in the police variable (highest police/population statistic of all counties examined). This county also has an average sentence of 21, making it an outlier. When analyzing the developed models it will be important to consider this counties leverage and influence on the regression and determine if it should be removed. We should discard this county if so. 
+
+Counties 185, 195, 3, 127, 99, 19, 197, 137 and 149 also have probconv greater than 1, which means more convictions were captured than arrests, a scenario such as committing a misdemeaner and being convicted but not arrested.  
+
 County 185 also has an extremely high wageser (weekly service industry wage) of 2177, which is far higher than the second highest county wageser of 391.
+
 There are also a few other outliers. For instance county 55 has a very high tax revenue, almost double the 3rd highest.
 
 Anomalies/errors: probsen and probconv are well above 1 in terms of max which violates them being "true" probabilities. Might make more sense to consider these as ordinal. If there are relatively few such points, might be able to discard as anomalies.
@@ -58,10 +60,8 @@ Anomalies/errors: probsen and probconv are well above 1 in terms of max which vi
 nrow(subset(crime,(probsen > 1) | (probconv > 1)))
 
 inspect_prob <- subset(crime,(probsen > 1) | (probconv > 1))
-
 ```
-We see that 10 of the 90 observations actually break the definition of probability. This is significant as that is 11% of our observations. Only one of these is violates from probsen and it happens to coincide with probconv. There don't seem to be any inconsistensies in the other columns or trends . We could consider breaking our data into quantiles and treating it as subjective/ordinal data. This will likely be the case for all three of the probabilities since they seem subjective. As a simple first transform, .5 could be coded as unsure with less being sure of the even not happening and above as being more confident that the event is happening. What would be interesting to explore is the relationship of probability of sentence and sentence length along with probability of conviction and arrest. Would also wanna check the group/joint significance of these. (Note: We may not actually need these two variables, since we are focused on finding the "determinants of crime". Let's keep this in mind before removing the records)
-
+We see that 10 of the 90 observations actually break the definition of probability. This is significant as that is 11% of our observations. Only one of these is violated from probsen and it happens to coincide with probconv. There doesn't seem to be any inconsistensies in the other columns or trends . We could consider breaking our data into quantiles and treating it as subjective/ordinal data. This will likely be the case for all three of the probabilities since they seem subjective. As a simple first transform, .5 could be coded as unsure with less being sure of the even not happening and above as being more confident that the event is happening. What would be interesting to explore is the relationship of probability of sentence and sentence length along with probability of conviction and arrest. Would also want to check the group/joint significance of these. (Note: We may not actually need these two variables, since we are focused on finding the "determinants of crime". Let's keep this in mind before removing the records)
 
 
 ```{r}
@@ -100,10 +100,21 @@ for (i in 4:26)
 library(corrplot)
 cor(crime) #quite a few variables, might wanna consider correlation heatmap here
 corrplot(cor(crime[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
-
-
 ```
-Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Intuitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other: 
+
+Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). 
+
+Analyzing the transformed dataset, we can see the following: 
+
+```{r}
+corrplot(cor(crime_transformed[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
+```
+
+Similar to the non-transformed dataset, we see the highest correlated variables are (density, wagefed, and urban) while the strongest negatively correlated variables are (probarrest, central and probconv)
+
+Intuitively a negative correlation between crimes and arrest/conviction doesn't make sense. Analyzing the variables however, $probarrest = \frac_{arrest}{offenses or crimes}$ and $probconv = \frac{convictions}{offenses or crimes}$. From this we can see that as crimes go up, if the number of arrests and/or convictions stays the same, there will be a negative correlation. Additionally, arrests may deter would be criminals from commiting a crime (ie crime goes down but $\frac{arrest}{crime}$ goes up. A similar argument can be made for conviction as well. Research has been conducted that looks into this correlation and posits that the negative correlation can be explained by deterrence. While this paper will look at strong variables to predict crime, ultimately causality and policy are important from the political perspective of this research, and understanding the 'why' behind a correlation is important. 
+
+For linear regression, we cannot use a 'perfectly correlated' variable set. Intuitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other: 
 
 ```{r}
 # (YZ)
@@ -119,10 +130,6 @@ The number of police per capita and tax revenue per capita are positively correl
 cor(crime$police, crime$tax)
 
 ```
-
-
-
-Oddly the probability of arrest or prison is negatively correlated with crime. There is no information related to how these statistics were computed so it is difficult to understand why they would be negatively correlated, when intuitively a higher probability of arrest/prison should correlate with crime.(Thought: Maybe there is more crime because people know they are less likely to be arrested. Or maybe there are less police, so the probability of being arrested is lower. I agree though, I am not entirely sure what these variables are)
 
 ```{r}
 cor(crime$probarr, crime$probsen)
@@ -217,18 +224,18 @@ cor(crime$wagefed, crime$wageloc)
 
 
 
-In order to determine important relationships between the crime variable and other explanatory variables, scatterplots can be analyzed. 
+In order to determine important relationships between the crime variable and other explanatory variables in the transformed datsaet, scatterplots can be analyzed. 
 ```{r}
 for (i in 5:26)
   {
- plot(crime[,i], crime$crime,main=" ",xlab=names(crime)[i])
+ plot(crime_transformed[,i], crime$crime,main=" ",xlab=names(crime)[i])
   title(names(crime)[i], line = -1)
 }
 ```
 
 Comments on scatterplots:
 
-Police: Looks more highly correlated with crime than corr suggests. There are 1 or 2 outliers that look very influential. This is important, because we would expect that police would have a big impact on crime. Let's consider this variable for model 1 (simple regression)
+Police: Looks more highly correlated with crime than corr suggests. There are 1 or 2 outliers that look very influential. This is important, because we would expect that police would have a big impact on crime. Let's consider this variable for model 1 (simple regression) -> I think it would be important to look at the police to residuals plot here (while we always look at fitted values to residuals, this compares the entire model. )
 
 Tax: Also has an influential point, so may be less correlated with crime than corr suggests. Also, cities tend to have wealthier people, with could mean more tax dollars, so this could just be a function of cities/density
 
@@ -267,8 +274,34 @@ wageloc
  - Ideas for models: 
 
 $$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + u $$
+(AO)
+Since model 1 is supposed to be "only explanatory variables of key interest" I would think the best option would be to include variables that only show strong correlation (neg or pos) with crime. When we get to model 2/3 then we can add other factors, multiply variables together, etc. I think police makes sense, both intuitively and from the scatterplot (so long as we show strong leverage/influence) of the 115 county and remove it. 
 
+I also think denisty, one of the probabilities (probsen has strongest negative slightly) would be good to include for this model, on the basis that we're only looking at key explanatory variables that make sense from an implementing policy perspective (stating we should reduce federal wages simply to reduce crime is a hard sell).
 
+$$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3probsen + u $$
+
+```{r}
+model1 <- lm(crime ~ density + probsen + police, data = crime_transformed)
+plot(model1)
+AIC(model1)
+influencePlot(model1,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+crime_transformed$leverage_model1 <- hatvalues(model1)
+subset(crime_transformed, leverage_model1 > 0.5, select = 'county')[1,1]
+```
+Looking at the leverage we can see that there is one datapoint outside the cooks distance line and are influential to the regression. As identified in the EDA, county 115 has many suspect datapoints. while we cannot determine the specific county from this dataset to better understand why it may be an influential county, we will remove it from the regression. 
+
+```{r}
+crime_transformed_outlier <- subset(crime_transformed, county != 115)
+model1 <- lm(crime ~ density + probsen + police, data = crime_transformed_outlier)
+plot(model1)
+AIC(model1)
+influencePlot(model1,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+crime_transformed_outlier$leverage_model1 <- hatvalues(model1)
+subset(crime_transformed, leverage_model1 > 0.5, select = 'county')[1,1]
+```
+
+By removing the influential datapoint our model has improved as expected. As noted previously, we cannot remove data in an effort to improve the model on the sample dataset, as the population model may reflect similar data. The datapoint was removed here after analyzing multiple parameters associated with county 115 that were beyond the normal distribution for other counties, and intuitively was questionable. It is also possible that the population of county 115 had a smaller population, and therefore is more susceptible to data extremes. 
 
 ##CLM Assumptions
 
