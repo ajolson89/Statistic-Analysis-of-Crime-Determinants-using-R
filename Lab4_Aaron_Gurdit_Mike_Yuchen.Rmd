@@ -1,7 +1,7 @@
 ---
 title: "Lab 4"
 subtitle: "w203: Statistics for Data Science"
-author: "Gurdit Chahal"
+author: "Gurdit Chahal, Mike Powers, Aaron Olson, Yuchen Zhang"
 output: pdf_document
 ---
 
@@ -10,12 +10,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ### Introduction
 
-There is a political campaign that is set out to understand source factors of crime in order to develop policy suggestions that can possibly be applied to local government. In order to make data-informed decisions, our group has been hired to provide research for the political campaign and has been given a dataset of crime statistics for a set of counties along with a codebook explaining the variables. Using EDA, hypothesis testing, and our knowledge of linear regression, we look to examine and possibly use available factors such as wage and police per capita (independent variables) to help understand their impact on crimes per person (dependent variable) as well as trying to help address the campaign's questions from a causal lens. We will also explain limitations and assumptions behind our choices of analysis and modeling and our results.
+There is a political campaign that is set out to understand source factors of crime in order to develop policy suggestions that can possibly be applied to local government. In order to make data-informed decisions, our group has been hired to provide research for the political campaign and has been given a dataset of crime statistics for a set of counties along with a codebook explaining the variables. 
+
+(YZ)
+This data is collected from a panel of 90 observational units (counties) from a single state in the U.S.
+
+Using EDA, hypothesis testing, and our knowledge of linear regression, we look to examine and possibly use available factors such as wage and police per capita (independent variables) to help understand their impact on crimes per person (dependent variable) as well as trying to help address the campaign's questions from a causal lens. We will also explain limitations and assumptions behind our choices of analysis and modeling and our results.
   
 ```{r}
 library(car)
 # setwd("~/Berkeley/W203 Statistics/Assignments/Lab_4") # MP Path #
-setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
+# setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
 crime <- read.csv(file='crime_v2_updated.csv',header=TRUE,sep=',')
 
 ```
@@ -34,6 +39,18 @@ Don't see any immediate na's. Hence we have to be more careful in finding anomol
 We note county doesnt mean anything in terms of descriptive statistics... We might use this id to see if there's random sampling or not. These counties might all be clustered in some fashion (as local government naturally would...). Year is 88 accross the data (1988) so it is truly cross sectional/true for that time period. 
 
 We note west, central and urban as indicator values. West and central have an implicit base value of [0,0] to indicate the eastern part of the state. Note ymales is a proprotion and is for a certain age group, can't explicitly look for a comment on females but rather have to generalize of population outside this particular group.
+
+(YZ)
+probarr (‘probability' of arrest) is proxied by the ratio of arrests to offenses. 
+probconv ('probability' of conviction) is proxied by the ratio of convictions to arrests.
+probsen (‘probability' of prison sentence) is proxied by the proportion of total convictions resulting in prison sentences.
+
+(YZ)
+Anomalies/errors:
+We notice that for county 115 probconv and probsen are well above 1 which may have been an clerical error in recording the data (i.e., not all arrests and convictions were properly recorded). We should discard this county if so. In addition, this county has an average sentence of 21, making it an outlier. This county is an anomaly with the lowest crime as well, so we can drop it.
+Counties 185, 195, 3, 127, 99, 19, 197, 137 and 149 also have probconv greater than 1, which means more convictions were captured than arrests. 
+County 185 also has an extremely high wageser (weekly service industry wage) of 2177, which is far higher than the second highest county wageser of 391.
+There are also a few other outliers. For instance county 55 has a very high tax revenue, almost double the 3rd highest.
 
 Anomalies/errors: probsen and probconv are well above 1 in terms of max which violates them being "true" probabilities. Might make more sense to consider these as ordinal. If there are relatively few such points, might be able to discard as anomalies.
 
@@ -82,21 +99,123 @@ for (i in 4:26)
 # install.packages("corrplot")
 library(corrplot)
 cor(crime) #quite a few variables, might wanna consider correlation heatmap here
-corrplot(cor(crime_transformed[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
+corrplot(cor(crime[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
 
 
 ```
-Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Induitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other:
+Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Intuitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other: 
 
 ```{r}
+# (YZ)
+# In addition, there are only 8 captured urban counties, so we can use density.
+
 cor(crime$urban, crime$density)
 ```
+
+(YZ)
+The number of police per capita and tax revenue per capita are positively correlated. This may also partially be thrown off by a few outliers. For instance county 55 has a very high tax revenue, and also a high police per capita.
+
+```{r}
+cor(crime$police, crime$tax)
+
+```
+
+
 
 Oddly the probability of arrest or prison is negatively correlated with crime. There is no information related to how these statistics were computed so it is difficult to understand why they would be negatively correlated, when intuitively a higher probability of arrest/prison should correlate with crime.(Thought: Maybe there is more crime because people know they are less likely to be arrested. Or maybe there are less police, so the probability of being arrested is lower. I agree though, I am not entirely sure what these variables are)
 
 ```{r}
 cor(crime$probarr, crime$probsen)
 ```
+```{r}
+# (YZ)
+cor(crime$probconv, crime$probsen)
+# we may want to look at these relationships again after we remove the anomalies
+```
+
+(YZ)
+```{r}
+cor(crime$probconv, crime$probarr)
+
+```
+
+(YZ)
+```{r}
+# not sure if this makes sense for examining crime rate and crime severity
+# but these 2 are surprisingly not highly correlated
+# places with lots of crime occurrances may be petty crimes
+cor(crime$crime, crime$avgsen)
+```
+
+(YZ)
+Other relationships and correlations between variables:
+
+```{r}
+cor(crime$probsen, crime$avgsen)
+# 0.1786942
+
+cor(crime$police, crime$avgsen)
+# 0.4881523
+# greater police, longer sentence
+
+cor(crime$police, crime$probsen)
+# 0.4259648
+cor(crime$police, crime$probconv)
+# 0.1718651
+cor(crime$police, crime$probarr)
+# 0.04820783
+# interesting that probability sentenced and polic is more correlated than other probabilities
+
+cor(crime$police, crime$density)
+# 0.1615286
+
+cor(crime$tax, crime$density)
+# 0.3204737
+
+cor(crime$pctmin, crime$tax)
+
+cor(crime$pctmin, crime$density)
+# -0.07470698
+# minimal negative relationship interesting as one may expect urban/densely populated areas to have greater portion of minorities
+
+cor(crime$mix, crime$avgsen)
+cor(crime$mix, crime$police)
+cor(crime$mix, crime$density)
+# nothing noticeable with ratio of f2f over other crimes
+
+cor(crime$ymale, crime$avgsen)
+cor(crime$ymale, crime$tax)
+
+
+```
+(YZ)
+Interesting to examine relationships between different wage categories:
+
+```{r}
+cor(crime$wagecon, crime$wagefed)
+
+cor(crime$wagecon, crime$wagetuc)
+
+cor(crime$wagecon, crime$wagetrd)
+
+cor(crime$wagecon, crime$wagefir)
+
+cor(crime$wagecon, crime$wageser)
+# this doesn't have a positive correlation but we may need to redo after dropping the county outlier per anomaly discussion above
+
+cor(crime$wagecon, crime$wagemfg)
+cor(crime$wagecon, crime$wagesta)
+cor(crime$wagecon, crime$wageloc)
+
+cor(crime$wagefed, crime$wagesta)
+cor(crime$wageloc, crime$wagesta)
+cor(crime$wagefed, crime$wageloc)
+# only fed and local wages has a relatively strong positive correlation
+
+
+```
+
+
 
 In order to determine important relationships between the crime variable and other explanatory variables, scatterplots can be analyzed. 
 ```{r}
@@ -124,19 +243,58 @@ Model 1: One explanatory variable of key interest
 Model 2: All key variables. Balancing accuracy and parsimony
 Model 3: All variables
 
+One model with only the explanatory variables of key interest (possibly transformed, as determined by your EDA), and no other covariates.
+
+
 Current thoughts: use "prob" vars, mix, ymale, tax, and density as explanatory...
+
+(YZ)
+Also: 
+pctmin (hypothesis: crime occurs more in minority populations)
+avgsen (hypothesis: look not only at crime but also the severity of crime by using average sentence days as an indicator for crime severity) - Could this be our second dependent variable? (from above correlation text, seems these two are not highly correlated - crime amount and crime severity)
+wagecon, wagefir, etc (hypothesis: the wider the range in wages the higher the income inequality) - not sure how we can address the availability of this set of wages across industries
+
+(YZ)
+Variables to include:
+we should look at prob of arrest, conviction, sentence
+police per capita
+density (not urban)
+tax
+wageloc
+
+
+(YZ)
+ - Ideas for models: 
+
+$$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + u $$
+
+
 
 ##CLM Assumptions
 
 a. Linear Population Model
-Nothing to reallt check here as we have specified the model in that way.
+
+(YZ)
+The model is specified such that the dependent variable is a linear function of the explanatory variables. This assumption is valid.
 
 b. Random Sampling
+
+(YZ)
+We need to better understand where the data is coming from. There is a high possibility that the collected data is not representative of the population distribution. It is unlikely crime sample data would be able to be drawn independently, so that each unit in the population has an equal chance to be drawn at each stage. As crime in itself is rarely randomized. Thus, the collected sample data is likely drawn from "convenience samples" and are not random samples.
+
 *Not sure* Current thoughts: neighboring counties can affect one another. There can be particular pockets of crime. We don't know how accurate the records are per county (especially in non-urban areas) and we are being given averages in some case. The probabability variables call into question if there was a selection on non-zero areas only (or what methods were even used to determine these probabilities; sample porportions, bayes, etc). Would likely say this fails...
 
 c. No Perfect Collinearity 
 
 Verified from correlation matrix. Would need to double check once we transform and create new variables. Should also check VIF.
+
+```{r}
+# (YZ)
+# once we define model1 - PLACEHOLDERS FOR NOW FOR CLM ASSUMPTION TESTS
+vif(model1)
+```
+
+
 
 d. Zero-conditional mean
 
@@ -147,23 +305,135 @@ At the least, argue for exogeneity.
 
 If any reason to believe invalid, can argue for OLS asymptotics for consistency due to sample size.
 
+```{r}
+# (YZ)
+# once we define model1
+
+# Examine the residuals versus fitted values plot.
+plot(model1, which = 1)
+
+nrow(crime)
+# Even if we did detect a violation of zero-conditional mean 
+# we have a large enough sample (90 obervations)
+# so we could rely on asymptotics: due to OLS asymptotics the coefficients are 
+# at least consistent.
+
+# Since we're just fitting an associative model
+# we can assume exogeneity and we know that our coefficients will be consistent.
+
+# We can also check our data for any unusually influential cases using a residuals versus leverage plot. 
+# This plot shows how much leverage each case has on the x-axis. 
+# It would also indicate any points with Cook's distance greater than 1 using a dotted red line. 
+plot(model1, which = 5)
+
+
+```
+
+
+
 e. Homoskedasticity
 Check residuals vs fitted to see wether variance constant
 Can also try Breusch-Pagan /Score-test
 
 If any doubt, calculate robust standard errors.
 
+
+```{r}
+# (YZ)
+# Our residuals versus fitted values plot seems to indicate (heteroskedasticity).
+plot(model1, which = 1)
+
+# The scale location plot gives us another way to assess this assumption.
+plot(model1, which = 3)
+
+# We can confirm the presense of heteroskedasticity with a Breusch-Pagan test. 
+bptest(model1)
+
+# We can also use the Score-test for non-constant error variance.
+ncvTest(model1)
+
+# A p-value > 0.05 indicates that the null hypothesis 
+# (the variance is unchanging in the residual) can be rejected 
+# and therefore heterscedasticity exists. p-value here is XXX.
+
+# To address heteroskedasticity, we use robust standard errors.
+# Robust standard errors do not change the OLS coefficient estimates or 
+# solve the inefficiency problem, but do give more accurate p-values.
+coeftest(model1, vcov = vcovHC)
+vcovHC(model1)
+
+```
+
+
+
 f. Normality of Errors
 Use Q-Q and histogram plots
 
+```{r}
+# (YZ)
+# To check normality of errors, we can look at the qqplot
+plot(model1, which = 2)
+
+# We can also examine the residuals directly.
+hist(model1$residuals, breaks = 50)
+
+# Also, we have a large sample size 
+# so the CLT tells us that our estimators will have a normal sampling distribution.
+```
+
+
+
 ##Model 2, add location and interactions?
 mention assumptions that differ
+
+(YZ)
+One model that includes key explanatory variables and only covariates that you believe increase the accuracy of your results without introducing bias (for example, you should not include outcome variables that will absorb some of the causal effect you are interested in). This model should strike a balance between accuracy and parsimony and reflect your best understanding of the determinants of crime.
+
+These we can include in the equation for controls:
+west and central to control for location
+pctmin
+mix
+ymale
+ - Ideas for models: 
+
+$$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + \beta_5west + \beta_6central + \beta_7pctmin + \beta_8mix + \beta_9ymale + u $$
+
+
 
 ##Model 3
 
 mention assumptions that differ
 
+
+(YZ)
+One model that includes the previous covariates, and most, if not all, other covariates. A key purpose of this model is to demonstrate the robustness of your results to model specification.
+
+Do we want to include all the wage variables or get an average of wage or maybe just include the local government employee wage (as that's likely what police wages would go under)?
+
+ - Ideas for models: 
+
+$$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + \beta_5west + \beta_6central + \beta_7pctmin + \beta_8mix + \beta_9ymale + \beta_10probarr + \beta_11probconv + \beta_12probsen + \beta_13avgsen + \beta_14wageloc  + u $$
+
+
+
 ##Causality
+
+
+What do we think would typically cause crime?
+- Low income (people need to steal for the things they want/need)
+- High drug use
+- High divorce rates (broken homes)
+- Prevelance of gangs/ gang members
+
+(YZ)
+lowers crime:
+- high police prevalence
+- higher tax revenue
+- lower density of population
+- higher probability of arrest, conviction and sentencing
+- higher wages
+- less prevalence of young males ?
+- less percentage of minorities ?
 
 
 ##Conclusion
