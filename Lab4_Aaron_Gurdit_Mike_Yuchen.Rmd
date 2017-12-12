@@ -14,6 +14,7 @@ There is a political campaign that is set out to understand source factors of cr
   
 ```{r}
 library(car)
+# setwd("~/Berkeley/W203 Statistics/Assignments/Lab_4") # MP Path #
 setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
 crime <- read.csv(file='crime_v2_updated.csv',header=TRUE,sep=',')
 
@@ -41,9 +42,8 @@ nrow(subset(crime,(probsen > 1) | (probconv > 1)))
 
 inspect_prob <- subset(crime,(probsen > 1) | (probconv > 1))
 
-
 ```
-We se that 10 of our observations actually break the definition of probability. This is significant as that is 11% of our observations. Only one of these is violates from probsen and it happens to coincide with probconv. There don't seem to be any inconsistensies in the other columns or trends . We could consider breaking our data into quantiles and treating it as subjective/ordinal data. This will likely be the case for all three of the probabilities since they seem subjective. As a simple first transform, .5 could be coded as unsure with less being sure of the even not happening and above as being more confident that the event is happening. What would be interesting to explore is the relationship of probability of sentence and sentence length along with probability of conviction and arrest. Would also wanna check the group/joint significance of these. 
+We see that 10 of the 90 observations actually break the definition of probability. This is significant as that is 11% of our observations. Only one of these is violates from probsen and it happens to coincide with probconv. There don't seem to be any inconsistensies in the other columns or trends . We could consider breaking our data into quantiles and treating it as subjective/ordinal data. This will likely be the case for all three of the probabilities since they seem subjective. As a simple first transform, .5 could be coded as unsure with less being sure of the even not happening and above as being more confident that the event is happening. What would be interesting to explore is the relationship of probability of sentence and sentence length along with probability of conviction and arrest. Would also wanna check the group/joint significance of these. (Note: We may not actually need these two variables, since we are focused on finding the "determinants of crime". Let's keep this in mind before removing the records)
 
 
 
@@ -56,13 +56,34 @@ for (i in 4:26)
 nrow(subset(crime,crime <.02))
 ```
 
-We first take note of our dependent variable of crime and see a positive skew. We note that all the values are already between 0 and .1 (non-inclusive). Since we don't have any 0's, a log transformation seems reasonable here thought for interpretation's sake we note that we're already dealing in percentages so have to be careful when discussing elasticity. Tax also has a strong positive skew and is strictly positive here (elasticity here also makes sense). Ymale and mix also seem to fall in that potential category. The wage variables seem natural to apply log transformations although they don't seem far from normal so we might want to compare/analyze further. We might also want to look at the group/joint effect of wage as well. Other variables to consider might be ratio of min wage to max.
+We first take note of our dependent variable of crime and see a positive skew (Some counties seem to have much more crime than the average). We note that all the values are already between 0 and .1 (non-inclusive). Tax also has a strong positive skew and is strictly positive here (elasticity here also makes sense). (Density has a large skew also. Cities will be much more populated than rural areas) Ymale and mix also seem to fall in that potential category. The wage variables seem natural to apply log transformations although they don't seem far from normal so we might want to compare/analyze further. (Note: Typically it makes sense to apply log to wage when you have a group with diverse jobs, since naturally some jobs make significantly more than others. However, since these are split into groups with similar jobs we see more of a normal distribution for each group. May not need to take log here.) We might also want to look at the group/joint effect of wage as well. Other variables to consider might be ratio of min wage to max.
 
 ```{r}
+# Create new dataframe with applied transformations and move forward with this?
+crime_transformed <- crime
+crime_transformed$crime <- log(crime_transformed$crime)
+crime_transformed$probconv <- log(crime_transformed$probconv)
+crime_transformed$police <- log(crime_transformed$police)
+crime_transformed$density <- log(crime_transformed$density)
+crime_transformed$tax <- log(crime_transformed$tax)
+crime_transformed$ymale <- log(crime_transformed$ymale)
+
+# Now are variables are closer to normally distributed
+for (i in 4:26)
+  {
+ hist(crime_transformed[,i],main=" ",xlab=NULL, breaks=20)
+  title(names(crime_transformed)[i], line = -1)
+}
+
+```
+
+
+```{r}
+# install.packages("corrplot")
 library(corrplot)
-crime$log_crime <- log(crime$crime)
 cor(crime) #quite a few variables, might wanna consider correlation heatmap here
-corrplot(cor(crime[c(4:27)]), method = 'square', type = 'upper', tl.col = 'black')
+corrplot(cor(crime_transformed[c(4:26)]), method = 'square', type = 'upper', tl.col = 'black')
+
 
 ```
 Looking at the top line of the correlation matrix (crime) we can see that the highest positively correlated varaibles are (density, urban, federal employee wage - weekly). The strongest negatively correlated variables are (probability of arrest, probability of prison sentance). For linear regression, we cannot use a 'perfectly correlated' variable set. Induitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other:
@@ -71,7 +92,7 @@ Looking at the top line of the correlation matrix (crime) we can see that the hi
 cor(crime$urban, crime$density)
 ```
 
-Oddly the probability of arrenst or prison is negatively correlated with crime. There is no information related to how these statistics were computed so it is difficult to understand why they would be negatively correlated, when intuitively a higher probability of arrest/prison should correlate with crime. 
+Oddly the probability of arrest or prison is negatively correlated with crime. There is no information related to how these statistics were computed so it is difficult to understand why they would be negatively correlated, when intuitively a higher probability of arrest/prison should correlate with crime.(Thought: Maybe there is more crime because people know they are less likely to be arrested. Or maybe there are less police, so the probability of being arrested is lower. I agree though, I am not entirely sure what these variables are)
 
 ```{r}
 cor(crime$probarr, crime$probsen)
@@ -86,7 +107,22 @@ for (i in 5:26)
 }
 ```
 
+Comments on scatterplots:
+
+Police: Looks more highly correlated with crime than corr suggests. There are 1 or 2 outliers that look very influential. This is important, because we would expect that police would have a big impact on crime. Let's consider this variable for model 1 (simple regression)
+
+Tax: Also has an influential point, so may be less correlated with crime than corr suggests. Also, cities tend to have wealthier people, with could mean more tax dollars, so this could just be a function of cities/density
+
+ymale: Also has influential point
+
+
 ##Proposed Model
+
+Important point: we are trying to use this data to understand the determinants of crime in order to generate policy suggestions that could lower crime. I believe we want to find variables we believe "cause" crime (not variables that are just correlated with crime), and can also be manipulated by local government policy in order to lower crime. e.g. things like police per capita, taxes, wages?
+
+Model 1: One explanatory variable of key interest
+Model 2: All key variables. Balancing accuracy and parsimony
+Model 3: All variables
 
 Current thoughts: use "prob" vars, mix, ymale, tax, and density as explanatory...
 
