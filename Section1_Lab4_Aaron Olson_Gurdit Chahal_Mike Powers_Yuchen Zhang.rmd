@@ -194,7 +194,7 @@ Our model is specified such that the dependent variable is a linear function of 
 
 Our population is all counties in a single state in the United States. The state is unknown to us. It was noticed that all of the county IDs are odd, and mostly (though not completely) sequential. It would be necessary to explore why this is the case. However, this seems to suggest that the data is not a random sample. For the purposes of this study will move forward assuming this assumption is met.
 
-
+There is also the complexity of clustering as neighboring counties can influence one another's crime rates due to spillover as well as territories for organized crime.
 ##### Delete this ############
 
 MP: I think it is safe to assume that the data we have in each county is correct. However, the question is do we have a random sample of records from each county? Or do we have clusters of counties, and therefore not random. We can probably delete the comments below, and just say what I wrote above.
@@ -273,7 +273,22 @@ ymale
  - Ideas for models: 
 
 $$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + \beta_5west + \beta_6central + \beta_7pctmin + \beta_8mix + \beta_9ymale + u $$
+#AO
+Comparing model1 with model2, consideration has been made for additional variables in order to determine causality. Importantly the probabilty terms were removed as they absorb some of the causal effect we are modeling for (crime) by integrating crime statistics into the statistic. 
 
+#GC / AO
+```{r}
+crime_transformed_outlier$wage_gap <- apply(crime_transformed_outlier[,22:24], 1, mean) - apply(crime_transformed_outlier[,16:21], 1, mean)
+#capture full effect of law enforcement/strictness
+model2 <- lm(crime ~ density + police + pctmin + ymale + wage_gap, data = crime_transformed_outlier)
+plot(model2)
+AIC(model2) # we see a drop in aic, meaning weve increased predictive power enough while adding variables to warrant adding these terms
+summary(model2)
+```
+
+```{r}
+cor(crime_transformed$crime, crime_transformed$urban*crime_transformed$tax)
+```
 
 
 ##Model 3
@@ -290,6 +305,35 @@ Do we want to include all the wage variables or get an average of wage or maybe 
 
 $$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + \beta_5west + \beta_6central + \beta_7pctmin + \beta_8mix + \beta_9ymale + \beta_10probarr + \beta_11probconv + \beta_12probsen + \beta_13avgsen + \beta_14wageloc  + u $$
 
+(YZ)
+# TO ADD AT END
+# Well formatted regression table summary of model results
+Generate a printout of our model coefficients, complete with standard errors that are valid given your diagnostics.  Comments on both the practical and statistical significance of your coefficients.
+
+```{r}
+# We need the vectors of robust standard errors.
+# We can get these from the coeftest output
+(se.model1 = coeftest(model1, vcov = vcovHC)[ , "Std. Error"])
+(se.model2 = coeftest(model2, vcov = vcovHC)[ , "Std. Error"])
+(se.model3 = coeftest(model3, vcov = vcovHC)[ , "Std. Error"])
+
+
+# We pass the standard errors into stargazer through 
+# the se argument.
+stargazer(model1, model2, model3, type = "text", omit.stat = "f",
+          se = list(se.model1, se.model2, se.model3),
+          star.cutoffs = c(0.05, 0.01, 0.001))
+
+# From model 1 we see that density and police are statistically and practically significant positive influencers on crime. 
+
+# This correlation is not necessarily causality in that higher levels of crime could actually cause there to be greater police presence
+
+# Though not statistically signficant, probsen is negatively correlated with crime, which makes practical sense
+
+# From model 2 we see that density, police and probconv are statistically significant and probconv is negatively correlated with crime (the other two are positively correlated just as in model 1)
+
+
+```
 
 
 ##Causality
@@ -312,5 +356,26 @@ lowers crime:
 - less percentage of minorities ?
 
 
+Variables are not included in your analysis 
+
+The likely direction of omitted variable bias. 
+
+If we miss out an important variable it not only means our model is poorly specified it also means that any estimated parameters are likely to be biased.
+
+Highlight any coefficients you find that appear to have the wrong sign from a causal perspective, and explain why this is the case.
+
+probarr
+police
+
 ##Conclusion
+
+(YZ)
+From our study, one observation we see is that there are more crimes are in highly populated areas based on density. One reason may be because crime thrives on anonymity, more prevalent in denser areas, e.g., you don't rob your neighbors because the likelihood of being identified is high.
+
+But does adding police officers mean a lowering of crime?
+Our results show that increasing the size of a police force does not ensure a decrease in crime. 
+
+There may be unintended consequences of adding police such as adding stress to communities where tensions between the police and residents are already high and overpolicing, where everyone is getting stopped.
+
+Of course, there's the possibility that cities and towns often hire more police after crime has already gone up.
 
