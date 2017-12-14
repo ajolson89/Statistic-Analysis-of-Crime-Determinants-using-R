@@ -88,8 +88,6 @@ crime_transformed$density <- log(crime_transformed$density)
 crime_transformed$tax <- log(crime_transformed$tax)
 crime_transformed$ymale <- log(crime_transformed$ymale)
 
-
-
 # Now are variables are closer to normally distributed
 for (i in 4:26)
   {
@@ -122,7 +120,7 @@ Intuitively a negative correlation between crimes and arrest/conviction doesn't 
 
 For linear regression, we cannot use a 'perfectly correlated' variable set. Intuitively density and urban are highly correlated and it is doubtful whether or not additional information related to 'crime' would be included in one variable over the other.
 
-We believe that Density can contain information related to wages, since people in more populated areas tend to make more money. This means it also contains information related to tax because higher wages leads to more tax revenue. Density may also contain information related to pctmin, since minorities tend to live in more populated areas like cities. The correlation matrix above seems to support these ideas.
+we believe that Density can contain information related to wages, since people in more populated areas tend to make more money. This means it also contains information related to tax because higher wages leads to more tax revenue. Density may also contain information related to pctmin, since minorities tend to live in more populated areas like cities. The correlation matrix above seems to support these ideas.
 
 In order to determine important relationships between the crime variable and other explanatory variables in the transformed datsaet, scatterplots can be analyzed. 
 
@@ -140,12 +138,12 @@ Police: Looks more highly correlated with crime than corr suggests. There are 1 
 
 Tax: Also has an influential point, so may be less correlated with crime than corr suggests. Also, cities tend to have wealthier people, with could mean more tax dollars, so this could just be a function of cities/density
 
-ymale: Also has influential point
+ymale: Also appears to have an influential point
 
 
 ##Proposed Model
 
-Important point: we are trying to use this data to understand the determinants of crime in order to generate policy suggestions that could lower crime. I believe we want to find variables we believe "cause" crime (not variables that are just correlated with crime), and can also be manipulated by local government policy in order to lower crime. e.g. things like police per capita, taxes, wages?
+We are trying to use this data to understand the determinants of crime in order to generate policy suggestions that could lower crime. Our goal in this study will be to determine which variables "cause" crime (not necessarily variables that are just correlated with crime), and can also be manipulated by local government policy in order to lower crime. e.g. things like police per capita, taxes, wages?
 
 Model 1: Explanatory variables of key interest
 Model 2: All key variables. Balancing accuracy and parsimony
@@ -158,10 +156,9 @@ wagecon, wagefir, etc (hypothesis: the wider the range in wages the higher the i
 
 Model 1: explanatory variables of key interest, and no other covariates.
 
-(AO)
-Since model 1 is supposed to be "only explanatory variables of key interest" I would think the best option would be to include variables that only show strong correlation (neg or pos) with crime. When we get to model 2/3 then we can add other factors, multiply variables together, etc. I think police makes sense, both intuitively and from the scatterplot (so long as we show strong leverage/influence) of the 115 county and remove it. 
+Our goal with model one is to determine the most efficient model which predicts the likelihood of data (key explanatory variables), while not overfitting the dataset. In order to determine what key explanatory variables to include, analysis was conducted on the correlation matrix as well as scatterplots and visual trend. As previously mentioned, density and probsen are highly correlated and intuitively make sense related to the prevalence of crime. 
 
-I also think denisty, one of the probabilities (probsen has strongest negative slightly) would be good to include for this model, on the basis that we're only looking at key explanatory variables that make sense from an implementing policy perspective (stating we should reduce federal wages simply to reduce crime is a hard sell).
+Police, while not intially highly correlated, makes sense, both intuitively and from the scatterplot (with the aforementioned county 115 appearing to behave as an influential datapoint). 
 
 $$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3probsen + u $$
 
@@ -173,7 +170,7 @@ influencePlot(model1,	id.method="identify", main="Influence Plot", sub="Circle s
 crime_transformed$leverage_model1 <- hatvalues(model1)
 subset(crime_transformed, leverage_model1 > 0.5, select = 'county')[1,1]
 ```
-Looking at the leverage we can see that there is one datapoint outside the cooks distance line and are influential to the regression. As identified in the EDA, county 115 has many suspect datapoints. while we cannot determine the specific county from this dataset to better understand why it may be an influential county, we will remove it from the regression. 
+Looking at the leverage we can see that there is one datapoint outside the cooks distance line and are influential to the regression. As identified in the EDA, county 115 has many suspect datapoints. while we cannot determine the specific county from this dataset (in the real world) to better understand why it may be an influential county, we will remove it from the regression.
 
 ```{r}
 crime_transformed_outlier <- subset(crime_transformed, county != 115)
@@ -181,16 +178,13 @@ model1 <- lm(crime ~ density + probsen + police, data = crime_transformed_outlie
 plot(model1)
 AIC(model1)
 influencePlot(model1,	id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
-crime_transformed_outlier$leverage_model1 <- hatvalues(model1)
-subset(crime_transformed, leverage_model1 > 0.5, select = 'county')[1,1]
-summary(model1)
 ```
 
-By removing the influential datapoint our model has improved as expected. As noted previously, we cannot remove data in an effort to improve the model on the sample dataset, as the population model may reflect similar data. The datapoint was removed here after analyzing multiple parameters associated with county 115 that were beyond the normal distribution for other counties, and intuitively was questionable. It is also possible that the population of county 115 had a smaller population, and therefore is more susceptible to data extremes. 
+By removing the influential datapoint our model has improved as expected. As noted previously, we cannot remove data in an effort to improve the model on the sample dataset, as the population model may reflect similar data. The datapoint was removed here after analyzing multiple parameters associated with county 115 that were beyond the normal distribution for other counties, and intuitively was questionable. It is also possible that the population of county 115 was smaller, and therefore is more susceptible to data extremes. 
 
 ##CLM Assumptions
 
-Next we will examine the classical linear regression assumptions of our model. If the first four our met, then our estimators can be assumed to be unbiased. Unbiasedness is an average property in repeated samples. In our sample, the estimates may be different from the true values, but as least we know that in expectation we are measuring the right thing. If the first five CLM assumptions are met, then our estimators are the best linear unbiased estimators of the regression coefficients. "Best" is defined as the OLS coefficients having the smallest possible variance. Under assumptions 1 - 6, the OLS coefficients are normally distributed, meaning each Bj is normally distributed around the true parameter. This is a useful assumption to meet if we wish to test hypotheses in the future.
+Next we will examine the classical linear regression assumptions of our model. If the first four are met, then our estimators can be assumed to be unbiased. Unbiasedness is an average property in repeated samples. In our sample, the estimates may be different from the true values, but as least we know that in expectation we are measuring the right thing. If the first five CLM assumptions are met, then our estimators are the best linear unbiased estimators of the regression coefficients. "Best" is defined as the OLS coefficients having the smallest possible variance. Under assumptions 1 - 6, the OLS coefficients are normally distributed, meaning each Bj is normally distributed around the true parameter. This is a useful assumption to meet if we wish to test hypotheses in the future.
 
 1. Linear Population Model: In the population, is the relationship between the dependent variable and explanatory variables linear?
 
@@ -198,10 +192,8 @@ Our model is specified such that the dependent variable is a linear function of 
 
 2. Random Sampling: Is our data a random sample from the population?
 
-Our population is all counties in a single state in the United States. The state is unknown to us. We noticed that all of the county IDs are odd. We would need to explore why this is the case. From first impression, this seems to suggest that the data is not a random sample. However, we will move forward assuming this assumption is met.
+Our population is all counties in a single state in the United States. The state is unknown to us. It was noticed that all of the county IDs are odd, and mostly (though not completely) sequential. It would be necessary to explore why this is the case. However, this seems to suggest that the data is not a random sample. For the purposes of this study will move forward assuming this assumption is met.
 
-#GC
-There is also the complexity of clustering as neighboring counties can influence one another's crime rates due to spillover as well as territories for organized crime.
 
 ##### Delete this ############
 
@@ -213,10 +205,9 @@ Current thoughts: neighboring counties can affect one another. There can be part
 
 ############ DELETE TO HERE #######################
 
-3. No Perfect Collinearity: In the sample (and population), none of the independent variables are constant and there are no exact relationships among the independent variables.
+3. No Perfect Multi-Collinearity: In the sample (and population), none of the independent variables are constant and there are no exact relationships among the independent variables.
 
 Our model would have generated an error in R if there were perfect collinearity. We also checked the correlation matrix. This assumption is met.
-
 
 4. Zero-conditional mean: The value of the explanatory variables must contain no information about the mean of the unobserved factors.
 
@@ -225,24 +216,20 @@ The residuals vs fitted value plot below suggests that this assumption may be me
 ```{r}
 # Examine the residuals versus fitted values plot.
 plot(model1, which = 1)
-
 nrow(crime_transformed_outlier)
 ```
 
-If someone suggests that the chart above indicates that the model did not meet the zero-conditional mean assumption, because the line is not perfectly straight at zero, then we could at least say that are OLS estimators are consistent since we have a fairly large n of 89. Consistency means that bias goes to zero due to the large sample size. This is refered to as exogeneity.
+From the plot above, it appears as though there is no pronounced reason to reject the zero-conditional mean assumtion. The average line (red) in the plot hovers near zero and only deviates at the extremes of the fitted values where there are fewer datapoints (from the histogram presented earlier). At the least the OLS estimators are consistent since there is a fairly large n of 89. Consistency means that bias goes to zero due to the large sample size. This is refered to as exogeneity.
 
 5. Homoskedasticity: The variance of the error term is constant. Explanatory variables must contain no information about variability of the error. 
 
 
-Examining the residuals versus fitted values plot below, it is difficult to say if heteroskedasticity exists. The band of residuals is fairly uniform until it shrinks for higher fitted values. We see this a bit more clearly with our scale-location plot though it might be argued that this is due to less observations as we go to the right. We ran the Breusch-Pagan test, which assumes the null hypothesis that there is homoskedasticity. The small p-value suggests that there is heteroskedasticity that we need to be aware of, so we will move forward with heteroskedasticity robust standard errors, since this assumption is not met.
+Examining the residuals versus fitted values plot below, it is difficult to say if heteroskedasticity exists. The band of residuals is fairly uniform until it shrinks for higher fitted values. We ran the Breusch-Pagan test, which assumes the null hypothesis that there is homoskedasticity. The small p-value suggests that there is heteroskedasticity that we need to be aware of, so we will move forward with heteroskedasticity robust standard errors, since this assumption is not met.
 
 
 ```{r}
 # residuals versus fitted values plot
 plot(model1, which = 1)
-#scale-location plot
-plot(model1, which = 3)
-
 # Breusch-Pagan test
 library(lmtest)
 bptest(model1)
@@ -255,11 +242,9 @@ vcovHC(model1)
 
 ```
 
-
-
 6. Normality of Errors: Errors are drawn from a normal distribution with a mean of zero. Also, the errors are independent of our explanatory variables.
 
-If this assumption were met, we expect to see a perfect diagonal line of points on the Q-Q plot below. This plot, along with the histogram of residuals, suggests that the error are not exactly normally distributed. However, they are not terribly skewed, and since we have a large sample size of 89 we can rely on the asymptotic properties of OLS, and assume the OLS estimators are normally distributed. Therefore, this condition is met.
+If this assumption were met, we expect to see a perfect diagonal line of points on the Q-Q plot below. This plot, along with the histogram of residuals, suggests that the error are not exactly normally distributed. However, they are not terribly skewed, and since we have a large sample size of 89 we can rely on the asymptotic properties of OLS, and assume the OLS estimators are normally distributed. The shapiro-wilk test statistic p-value = 0.31 means we fail to reject the null hypothesis that the distribution is normal. Therefore, this condition is met.
 
 ```{r}
 
@@ -269,24 +254,13 @@ plot(model1, which = 2)
 # Histogram of Residuals
 hist(model1$residuals, breaks = 50)
 
-summary(model1)
-
+shapiro.test(model1$residuals)
 ```
 
 
 
 ##Model 2, add location and interactions?
 mention assumptions that differ
-
-#GC
-```{r}
-#capture full effect of law enforcement/strictness
-model2 <- lm(crime ~ density + probsen + police + probconv + probarr  + probconv*probsen, data = crime_transformed_outlier)
-plot(model2)
-AIC(model2) # we see a drop in aic, meaning weve increased predictive power enough while adding variables to warrant adding these terms
-summary(model2)
-```
-
 
 (YZ)
 One model that includes key explanatory variables and only covariates that you believe increase the accuracy of your results without introducing bias (for example, you should not include outcome variables that will absorb some of the causal effect you are interested in). This model should strike a balance between accuracy and parsimony and reflect your best understanding of the determinants of crime.
@@ -316,35 +290,6 @@ Do we want to include all the wage variables or get an average of wage or maybe 
 
 $$ crime = \beta_0 + \beta_1police + \beta_2density + \beta_3tax + \beta_4wageloc + \beta_5west + \beta_6central + \beta_7pctmin + \beta_8mix + \beta_9ymale + \beta_10probarr + \beta_11probconv + \beta_12probsen + \beta_13avgsen + \beta_14wageloc  + u $$
 
-(YZ)
-# TO ADD AT END
-# Well formatted regression table summary of model results
-Generate a printout of our model coefficients, complete with standard errors that are valid given your diagnostics.  Comments on both the practical and statistical significance of your coefficients.
-
-```{r}
-# We need the vectors of robust standard errors.
-# We can get these from the coeftest output
-(se.model1 = coeftest(model1, vcov = vcovHC)[ , "Std. Error"])
-(se.model2 = coeftest(model2, vcov = vcovHC)[ , "Std. Error"])
-(se.model3 = coeftest(model3, vcov = vcovHC)[ , "Std. Error"])
-
-
-# We pass the standard errors into stargazer through 
-# the se argument.
-stargazer(model1, model2, model3, type = "text", omit.stat = "f",
-          se = list(se.model1, se.model2, se.model3),
-          star.cutoffs = c(0.05, 0.01, 0.001))
-
-# From model 1 we see that density and police are statistically and practically significant positive influencers on crime. 
-
-# This correlation is not necessarily causality in that higher levels of crime could actually cause there to be greater police presence
-
-# Though not statistically signficant, probsen is negatively correlated with crime, which makes practical sense
-
-# From model 2 we see that density, police and probconv are statistically significant and probconv is negatively correlated with crime (the other two are positively correlated just as in model 1)
-
-
-```
 
 
 ##Causality
@@ -367,26 +312,5 @@ lowers crime:
 - less percentage of minorities ?
 
 
-Variables are not included in your analysis 
-
-The likely direction of omitted variable bias. 
-
-If we miss out an important variable it not only means our model is poorly specified it also means that any estimated parameters are likely to be biased.
-
-Highlight any coefficients you find that appear to have the wrong sign from a causal perspective, and explain why this is the case.
-
-probarr
-police
-
 ##Conclusion
-
-(YZ)
-From our study, one observation we see is that there are more crimes are in highly populated areas based on density. One reason may be because crime thrives on anonymity, more prevalent in denser areas, e.g., you don't rob your neighbors because the likelihood of being identified is high.
-
-But does adding police officers mean a lowering of crime?
-Our results show that increasing the size of a police force does not ensure a decrease in crime. 
-
-There may be unintended consequences of adding police such as adding stress to communities where tensions between the police and residents are already high and overpolicing, where everyone is getting stopped.
-
-Of course, there's the possibility that cities and towns often hire more police after crime has already gone up.
 
