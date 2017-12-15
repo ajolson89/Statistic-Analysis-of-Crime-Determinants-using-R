@@ -20,8 +20,8 @@ Using EDA, hypothesis testing, and our knowledge of linear regression, we look t
 ```{r}
 library(car)
 library(stargazer)
-# setwd("~/Berkeley/W203 Statistics/Assignments/Lab_4") # MP Path #
-#setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
+setwd("~/Berkeley/W203 Statistics/Assignments/Lab_4") # MP Path #
+# #setwd("C:/Users/AOlson/Documents/UC Berkeley MIDS/W203 Statistics/Lab 4/Lab_4")
 setwd("/Users/gurditchahal/W203/Lab4")
 crime <- read.csv(file='crime_v2_updated.csv',header=TRUE,sep=',')
 
@@ -333,39 +333,32 @@ stargazer(model1, model2, model3, type = "text", omit.stat = "f",
 # From model 2 we see that density, police and probconv are statistically significant and probconv is negatively correlated with crime (the other two are positively correlated just as in model 1)
 
 
+summary(model1)
 ```
 
 
 ##Causality
 
+A detailed discussion of causality. In particular, include discussion of Variables not included in your analysis , along with likely direction of omitted variable bias. Highlight any coefficients you find that appear to have the wrong sign from a causal perspective, and explain why this is the case.
 
-What do we think would typically cause crime?
-- Low income (people need to steal for the things they want/need)
-- High drug use
-- High divorce rates (broken homes)
-- Prevelance of gangs/ gang members
+(MP)
 
-(YZ)
-lowers crime:
-- high police prevalence
-- higher tax revenue
-- lower density of population
-- higher probability of arrest, conviction and sentencing
-- higher wages
-- less prevalence of young males ?
-- less percentage of minorities ?
+Randomized controlled experiments are the gold standard for establishing causation. In this situation, we have been asked to suggest causality using a snapshot of observational data. Our betas, which indicate the change in crime for a unit change in each variable while holding all other variables constant, may not neccessarily be correct. However, the direction of the betas could prove useful for infering the direction of potential causality. This is the important question that needs to be answered: what policies can be implemented to maniplate the variables we have studied in order to lower crime rates?
+
+The team initially hypothesized that some of the largest causes of crime may include: poverty, drug use, prevelance of gangs, and divorce rates. Our data appeared to be missing information related to all of these variables, including poverty. It is difficult to determine poverty from wages without knowing the cost of living.
+
+We moved forward with a model that included police, density and probsen:
+
+[crime] = -0.103 + 0.344[density] - 0.607[probsen] +  0.503[police]
+
+These variables are correlated with crime, and were the best explanatory variables in the data. However, we can not say that these are the CAUSES of crime. It could be the case that crime is the cause of more police, and that crime occurs in more dense areas due to other factors. If our data is missing important explanatory variables, then our model is poorly specified and the estimated parameters are likely to be biased.
+
+We believe we can estimate the direction of omitted variable bias from the variables we believe are missing and could be useful in our model. In order to estimate these directions, we are going to assume that each of the missing variables we listed above (poverty, drug use, gangs, and divorse) are uncorrelated with the predictor variables we have chosen (density, probsen, and police). Since all of these missing variables have a positive correlation with crime, the direction of omitted variable bias each would have on our predictor variables are (direction of missing variable on crime * direction of predictor variable on missing variable):
+  1. density: positive * positive = positive
+  2. probsen: positive * negative = negative
+  3. police:  positive * positive = positive
 
 
-Variables are not included in your analysis 
-
-The likely direction of omitted variable bias. 
-
-If we miss out an important variable it not only means our model is poorly specified it also means that any estimated parameters are likely to be biased.
-
-Highlight any coefficients you find that appear to have the wrong sign from a causal perspective, and explain why this is the case.
-
-probarr
-police
 
 ##Conclusion
 
